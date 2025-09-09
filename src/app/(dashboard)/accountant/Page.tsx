@@ -14,17 +14,17 @@ type Props = {
 const AccountantPage = async ({ searchParams }: Props) => {
   // Await the searchParams Promise
   const resolvedSearchParams = await searchParams;
-  
+ 
   // Clerk auth
   const { userId } = await auth();
-  
+ 
   if (!userId) {
     return <div>Please log in to access this page.</div>;
   }
 
   // Get current accountant data
   const currentAccountant = await getCurrentAccountant(userId);
-  
+ 
   if (!currentAccountant) {
     return <div>Accountant profile not found. Please contact administrator.</div>;
   }
@@ -40,16 +40,16 @@ const AccountantPage = async ({ searchParams }: Props) => {
         {/* USER CARDS - Financial Overview */}
         <div className="flex gap-3 sm:gap-4 justify-between flex-wrap">
           <UserCard type="student" />
-          <UserCard type="fee" />
-          <UserCard type="payment" />
-          <UserCard type="pending" />
+          <UserCard type="admin" />
+          <UserCard type="teacher" />
+          <UserCard type="parent" />
         </div>
 
         {/* FINANCE OVERVIEW */}
         <div className="w-full h-[400px] sm:h-[500px] lg:h-[550px] xl:h-[600px] bg-white rounded-md shadow-md p-4">
           <FinanceChart userId={currentAccountant.id} role="accountant" />
         </div>
-        
+       
         {/* FEE FORM */}
         <div className="w-full bg-white rounded-md shadow-md p-4">
           <h2 className="text-xl font-semibold mb-4">Create New Fee</h2>
@@ -60,7 +60,7 @@ const AccountantPage = async ({ searchParams }: Props) => {
           />
         </div>
       </div>
-      
+     
       {/* RIGHT */}
       <div className="w-full lg:w-1/3 flex flex-col gap-6 lg:gap-8">
         <EventCalendarContainer searchParams={resolvedSearchParams} />
