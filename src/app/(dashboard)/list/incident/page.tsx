@@ -328,7 +328,7 @@ const IncidentListPage = async ({
       where: studentQuery,
       include: {
         class: { select: { name: true } },
-        Incident: {
+        incidents: {  // ✅ Changed from 'Incident' to 'incidents'
           // ✅ Filter incidents as well (though they should already be filtered by student selection)
           where: Object.keys(incidentQuery).length > 1 ? 
             Object.fromEntries(
@@ -362,13 +362,13 @@ const IncidentListPage = async ({
       className: student.class.name,
       gender: student.sex,
       phone: student.phone,
-      totalPoints: student.Incident.reduce((sum, incident) => {
+      totalPoints: student.incidents.reduce((sum, incident) => {  // ✅ Changed from 'Incident' to 'incidents'
         const points = incident.behavior.isNegative
           ? -incident.behavior.point
           : incident.behavior.point;
         return sum + points;
       }, 0),
-      totalIncidents: student.Incident.length,
+      totalIncidents: student.incidents.length,  // ✅ Changed from 'Incident' to 'incidents'
     }));
 
     // Sort by totalPoints if requested
