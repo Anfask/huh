@@ -1,13 +1,13 @@
 services:
-  postgres:
+  postgres-huh:
     image: postgres:15
-    container_name: postgres_db
+    container_name: postgres_huh
     networks:
-      - iqraschool
+      - huhnet
     ports:
-      - "5433:5432"
+      - "5433:5432"   # different from first app (5432)
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_huh_data:/var/lib/postgresql/data
     env_file:
       - .env
     healthcheck:
@@ -16,22 +16,22 @@ services:
       timeout: 5s
       retries: 5
 
-  app:
+  app-huh:
     build:
       context: .
       target: production
       args:            
         NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
         NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}
-    container_name: nextjs_app
+    container_name: nextjs_huh
     ports:
-      - "3002:3000"
+      - "3002:3000"   # different from first app (3000)
     restart: always
     networks:
-      - iqraschool
+      - huhnet
     command: sh -c "npx prisma migrate deploy && npx prisma db seed && npm start"
     depends_on:
-      postgres:
+      postgres-huh:
         condition: service_healthy
     env_file:
       - .env
@@ -42,8 +42,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
 
 volumes:
-  postgres_data:
+  postgres_huh_data:
 
 networks:
-  iqraschool:
+  huhnet:
     driver: bridge
