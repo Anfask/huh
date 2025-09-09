@@ -121,15 +121,17 @@ const MonthlyAttendance: React.FC<MonthlyAttendanceProps> = ({
     // Table header
     worksheet.addRow(["Date", "Day", "Status", "Mark"]);
 
-    // Table rows
+    // Table rows - Fixed the TypeScript error
     calendarDays
       .filter((day) => day.isCurrentMonth && day.attendance)
       .forEach((day) => {
+        // Since we've filtered for days with attendance, we can safely assert it exists
+        const attendance = day.attendance!;
         worksheet.addRow([
           day.date.toLocaleDateString(),
           weekDays[day.date.getDay()],
-          day.attendance.present ? "Present" : "Absent",
-          day.attendance.present ? "P" : "A",
+          attendance.present ? "Present" : "Absent",
+          attendance.present ? "P" : "A",
         ]);
       });
 
