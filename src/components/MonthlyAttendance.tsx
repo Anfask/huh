@@ -1,7 +1,8 @@
 // components/MonthlyAttendance.tsx
 "use client";
-import React, { useState, useEffect } from "react";
-import * as XLSX from "exceljs";
+import React, { useState } from "react";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 interface AttendanceRecord {
   id: number;
@@ -25,18 +26,8 @@ const MonthlyAttendance: React.FC<MonthlyAttendanceProps> = ({
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
   ];
 
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -44,14 +35,12 @@ const MonthlyAttendance: React.FC<MonthlyAttendanceProps> = ({
   // Generate calendar days
   const generateCalendarDays = () => {
     const firstDay = new Date(selectedYear, selectedMonth, 1);
-    const lastDay = new Date(selectedYear, selectedMonth + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(1 - firstDay.getDay());
 
     const days = [];
     const currentDate = new Date(startDate);
 
-    // Generate 42 days (6 weeks) to fill the calendar grid
     for (let i = 0; i < 42; i++) {
       const dayAttendance = attendances.find(
         (record) => record.date.toDateString() === currentDate.toDateString()
@@ -61,9 +50,7 @@ const MonthlyAttendance: React.FC<MonthlyAttendanceProps> = ({
         date: new Date(currentDate),
         isCurrentMonth: currentDate.getMonth() === selectedMonth,
         attendance: dayAttendance,
-        isToday:
-          currentDate.toDateString() ===
-          new Date().toLocaleDateString("en-GB").split("/").reverse().join("-"),
+        isToday: currentDate.toDateString() === new Date().toDateString(),
       });
 
       currentDate.setDate(currentDate.getDate() + 1);
@@ -72,37 +59,30 @@ const MonthlyAttendance: React.FC<MonthlyAttendanceProps> = ({
     return days;
   };
 
-  // Get attendance status for a day
+  // Attendance status
   const getAttendanceStatus = (day: any) => {
     if (!day.isCurrentMonth || !day.attendance) return null;
     return day.attendance.present ? "P" : "A";
   };
 
-  // Get cell styling based on attendance
+  // Cell style
   const getCellStyle = (day: any) => {
     const baseStyle =
       "w-10 h-10 flex items-center justify-center text-sm font-medium rounded-lg border transition-colors";
 
-    if (!day.isCurrentMonth) {
-      return `${baseStyle} text-gray-300 bg-gray-50`;
-    }
-
-    if (day.isToday) {
-      return `${baseStyle} border-blue-500 bg-blue-50 text-blue-700`;
-    }
+    if (!day.isCurrentMonth) return `${baseStyle} text-gray-300 bg-gray-50`;
+    if (day.isToday) return `${baseStyle} border-blue-500 bg-blue-50 text-blue-700`;
 
     if (day.attendance) {
-      if (day.attendance.present) {
-        return `${baseStyle} bg-green-100 text-green-800 border-green-200`;
-      } else {
-        return `${baseStyle} bg-red-100 text-red-800 border-red-200`;
-      }
+      return day.attendance.present
+        ? `${baseStyle} bg-green-100 text-green-800 border-green-200`
+        : `${baseStyle} bg-red-100 text-red-800 border-red-200`;
     }
 
     return `${baseStyle} border-gray-200 hover:bg-gray-50`;
   };
 
-  // Calculate attendance statistics
+  // Attendance stats
   const calculateStats = () => {
     const currentMonthAttendance = attendances.filter(
       (record) =>
@@ -111,9 +91,7 @@ const MonthlyAttendance: React.FC<MonthlyAttendanceProps> = ({
     );
 
     const totalDays = currentMonthAttendance.length;
-    const presentDays = currentMonthAttendance.filter(
-      (record) => record.present
-    ).length;
+    const presentDays = currentMonthAttendance.filter((r) => r.present).length;
     const absentDays = totalDays - presentDays;
     const attendancePercentage =
       totalDays > 0 ? ((presentDays / totalDays) * 100).toFixed(1) : "0";
@@ -121,58 +99,52 @@ const MonthlyAttendance: React.FC<MonthlyAttendanceProps> = ({
     return { totalDays, presentDays, absentDays, attendancePercentage };
   };
 
-  // Export to Excel
-  const exportToExcel = () => {
+  // Export with exceljs
+  const exportToExcel = async () => {
     const stats = calculateStats();
     const monthName = months[selectedMonth];
-
-    // Prepare data for Excel
     const calendarDays = generateCalendarDays();
-    const excelData = [];
 
-    // Add header information
-    excelData.push(["Student Monthly Attendance Report"]);
-    excelData.push(["Student Name:", studentName]);
-    excelData.push(["Month:", `${monthName} ${selectedYear}`]);
-    excelData.push(["Total Days:", stats.totalDays]);
-    excelData.push(["Present Days:", stats.presentDays]);
-    excelData.push(["Absent Days:", stats.absentDays]);
-    excelData.push(["Attendance Percentage:", `${stats.attendancePercentage}%`]);
-    excelData.push([""]); // Empty row
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Attendance");
 
-    // Add calendar header
-    excelData.push(["Date", "Day", "Status", "Mark"]);
+    // Header info
+    worksheet.addRow(["Student Monthly Attendance Report"]);
+    worksheet.addRow([`Student Name: ${studentName}`]);
+    worksheet.addRow([`Month: ${monthName} ${selectedYear}`]);
+    worksheet.addRow([`Total Days: ${stats.totalDays}`]);
+    worksheet.addRow([`Present Days: ${stats.presentDays}`]);
+    worksheet.addRow([`Absent Days: ${stats.absentDays}`]);
+    worksheet.addRow([`Attendance Percentage: ${stats.attendancePercentage}%`]);
+    worksheet.addRow([]);
 
-    // Add calendar data
+    // Table header
+    worksheet.addRow(["Date", "Day", "Status", "Mark"]);
+
+    // Table rows
     calendarDays
       .filter((day) => day.isCurrentMonth && day.attendance)
       .forEach((day) => {
-        excelData.push([
+        worksheet.addRow([
           day.date.toLocaleDateString(),
           weekDays[day.date.getDay()],
-          day.attendance?.present ? "Present" : "Absent",
-          day.attendance?.present ? "P" : "A",
+          day.attendance.present ? "Present" : "Absent",
+          day.attendance.present ? "P" : "A",
         ]);
       });
 
-    // Create workbook and worksheet
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(excelData);
-
-    // Set column widths
-    ws["!cols"] = [
+    // Column widths
+    worksheet.columns = [
       { width: 15 },
       { width: 10 },
-      { width: 10 },
+      { width: 12 },
       { width: 8 },
     ];
 
-    // Add the worksheet to workbook
-    XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-
-    // Save the file
+    // Save file
+    const buffer = await workbook.xlsx.writeBuffer();
     const fileName = `${studentName}_Attendance_${monthName}_${selectedYear}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    saveAs(new Blob([buffer]), fileName);
   };
 
   const calendarDays = generateCalendarDays();
@@ -180,7 +152,7 @@ const MonthlyAttendance: React.FC<MonthlyAttendanceProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Header with controls */}
+      {/* Header */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-800">Monthly Attendance</h3>
         <button
@@ -212,9 +184,7 @@ const MonthlyAttendance: React.FC<MonthlyAttendanceProps> = ({
           className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
         >
           {months.map((month, index) => (
-            <option key={index} value={index}>
-              {month}
-            </option>
+            <option key={index} value={index}>{month}</option>
           ))}
         </select>
         <select
@@ -225,14 +195,12 @@ const MonthlyAttendance: React.FC<MonthlyAttendanceProps> = ({
           {Array.from({ length: 5 }, (_, i) =>
             new Date().getFullYear() - 2 + i
           ).map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
+            <option key={year} value={year}>{year}</option>
           ))}
         </select>
       </div>
 
-      {/* Statistics */}
+      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-blue-50 p-3 rounded-lg">
           <p className="text-xs text-blue-600">Total Days</p>
@@ -260,7 +228,7 @@ const MonthlyAttendance: React.FC<MonthlyAttendanceProps> = ({
           {months[selectedMonth]} {selectedYear}
         </h4>
 
-        {/* Week days header */}
+        {/* Week days */}
         <div className="grid grid-cols-7 gap-2 mb-2">
           {weekDays.map((day) => (
             <div
